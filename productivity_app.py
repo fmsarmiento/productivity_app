@@ -5,6 +5,7 @@ from tkinter import messagebox
 import threading
 import datetime
 import time
+import re
 
 # Styling
 bg = "#E7D2CC" 
@@ -58,6 +59,31 @@ def hms(duration):
 # Returns current date & time
 def get_datetime():
     return datetime.datetime.now().strftime("%B %d, %I:%M %p")
+
+# HH:MM:SS addition of hms
+def hms_add(x,y):
+    s = int(x[6:8]) + int(y[6:8])
+    m = (int(x[3:5]) + int(y[3:5])) * 60
+    h = (int(x[0:2]) + int(y[0:2])) * 3600
+    return hms(s+m+h)
+
+# Return productivity amount for the day
+def day_productivity():
+    logs = []
+    y = 0
+    current_time = "00:00:00"
+    total_time = "00:00:00"
+    pattern = r"([\d][\d]:[\d][\d]:[\d][\d])"
+    current_dt = datetime.datetime.now().strftime("%B %d")
+    with open("prod.data","r+") as f:
+        x = f.readlines()
+    for elt in x:
+        if current_dt in elt:
+            res = re.search(pattern, elt)
+            total_time = hms_add(res[1], current_time)
+            current_time = total_time
+            y = y + 1
+    return "Today, you had {} sessions, totaling to a productive time of {}!".format(y,total_time)
 
 # ssframe - shows and saves variables of inputs, if any
 def ssframe(frame, savevars):
@@ -393,7 +419,7 @@ maintimed_button.pack(pady=10)
 mainpomodoro_button = tk.Button(main_input, text="Pomodoro/Modified", font=bigfont, 
                         bg=bg, borderwidth=1, command=lambda:ssframe(pomodoroframe, "pomodoro"))
 mainpomodoro_button.pack(pady=10)
-counter_label = tk.Label(main_input, text="You've been productive for X minutes \n| hours today!", font=hfont, wraplength=300)
+counter_label = tk.Label(main_input, text=day_productivity(), font=bigfont, wraplength=300)
 counter_label.pack()
 
 # -- Pacedframe -- #
