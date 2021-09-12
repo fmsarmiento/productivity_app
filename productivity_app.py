@@ -1,5 +1,5 @@
 import time
-from tkinter.constants import CENTER, LEFT, TOP, W
+from tkinter.constants import BOTTOM, CENTER, LEFT, RIGHT, TOP, W
 import tkinter as tk
 from tkinter import messagebox
 import threading
@@ -33,6 +33,13 @@ timed_enddt = None
 pomodoro_desc = None
 pomodoro_dur = None
 pomodoro_break = None
+pomodoro_elapsed = 0
+pomodorobreak_elapsed = 0
+pomodoro_paused = False
+pomodoro_startdt = None
+pomodoro_enddt = None
+pomodoro_state = 0
+pomodoro_total = 0
 # gvars - all
 
 # MAIN
@@ -69,16 +76,18 @@ def ssframe(frame, savevars):
     global timed_enddt
     global timed_elapsed
     global timedinput_desc
+    global pomodoro_desc 
+    global pomodoro_dur
+    global pomodoro_break
+    global pomodoro_elapsed
+    global pomodorobreak_elapsed
+    global pomodoro_paused
+    global pomodoro_startdt
+    global pomodoro_enddt
+    global pomodoro_state
+    global pomodoro_total
     if savevars == None: # For updates that don't have input elements
         pass
-    elif savevars == "pacedlobby":
-        paced_startdt = get_datetime()
-        paced_desc = pacedinput_desc.get(1.0, "end-1c").strip()
-        if paced_desc == "":
-            messagebox.showinfo("Info","Please enter your type of productivity.")
-            pacedframe.tkraise()
-            return
-        pacedlobbyconsole_text['text'] = "Let's work at our own pace!\nActivity: "+paced_desc
     elif savevars == "paced":
         paced_timer = 0
         paced_paused = False
@@ -96,6 +105,25 @@ def ssframe(frame, savevars):
         timedlobby_start['state']="normal"
         timedlobby_pause['state']="disabled"
         timedlobby_stop['state']="disabled"
+    elif savevars == "pomodoro":
+        pomodoro_dur = 0
+        pomodoro_elapsed = 0
+        pomodoro_break = 0
+        pomodorobreak_elapsed = 0
+        pomodoroinput_desc.delete("1.0","end")
+        pomodoroinput_dur.delete("1.0","end")
+        pomodoroinput_break.delete("1.0","end")
+        pomodorolobby_start['state']="normal"
+        pomodorolobby_pause['state']="disabled"
+        pomodorolobby_stop['state']="disabled"
+    elif savevars == "pacedlobby":
+        paced_startdt = get_datetime()
+        paced_desc = pacedinput_desc.get(1.0, "end-1c").strip()
+        if paced_desc == "":
+            messagebox.showinfo("Info","Please enter your type of productivity.")
+            pacedframe.tkraise()
+            return
+        pacedlobbyconsole_text['text'] = "Let's work at our own pace!\nActivity: "+paced_desc
     elif savevars == "timedlobby":
         timed_startdt = get_datetime()
         timed_desc = timedinput_desc.get(1.0, "end-1c").strip()
@@ -113,15 +141,44 @@ def ssframe(frame, savevars):
             timedinput_dur.delete("1.0", "end")
             timedframe.tkraise()
             return
-    elif savevars == "pomodoro":
-        pass
+    elif savevars == "pomodorolobby":
+        pomodoro_total = 0
+        pomodoro_startdt = get_datetime()
+        pomodoro_desc = pomodoroinput_desc.get(1.0, "end-1c").strip()
+        if pomodoro_desc == "":
+            messagebox.showinfo("Info","Please enter your type of productivity.")
+            pomodoroframe.tkraise()
+            return
+        try:
+            pomodoro_break = int(pomodoroinput_break.get(1.0, "end-1c").strip())
+            pomodoro_break = pomodoro_break * 60 #Convert from minutes to seconds
+        except:
+            messagebox.showinfo("Info","Please enter an integer for break time (in minutes).")
+            pomodoroinput_break.delete("1.0", "end")
+            pomodoroframe.tkraise()
+            return
+        try:
+            pomodoro_dur = int(pomodoroinput_dur.get(1.0, "end-1c").strip())
+            pomodoro_dur = pomodoro_dur * 60 #Convert from minutes to seconds
+            pomodorolobby_timer['text']=hms(pomodoro_dur)
+        except:
+            messagebox.showinfo("Info","Please enter an integer for time (in minutes).")
+            pomodoroinput_dur.delete("1.0", "end")
+            pomodoroframe.tkraise()
+            return
+        pomodorolobbyconsole_text['text'] = "Let's work using the pomodoro technique!\nProductivity: "+hms(pomodoro_dur)+"|Break: "+hms(pomodoro_break)+"\nActivity: "+pomodoro_desc
     frame.tkraise() # Brings frame up
-
 # pacedcounter - thread funct for timer
 def pacedcounter(time_display):
     global paced_timer
+    global pacedlobby_start
+    global pacedlobby_pause
+    global pacedlobby_stop
     while True:
         if paced_paused == True:
+            pacedlobby_start['state'] = "normal"
+            pacedlobby_pause['state'] = "disabled"
+            pacedlobby_stop['state'] = "normal"
             return
         time.sleep(1)
         time_display['text'] = hms(paced_timer)
@@ -147,9 +204,9 @@ def paced_pause():
     global pacedlobby_pause
     global pacedlobby_stop
     paced_paused = True
-    pacedlobby_start['state']="normal"
+    pacedlobby_start['state']="disabled" 
     pacedlobby_pause['state']="disabled"
-    pacedlobby_stop['state']="normal"
+    pacedlobby_stop['state']="disabled" 
 
 # paced_stop - ends session
 def paced_stop(frame,label):
@@ -165,13 +222,20 @@ def paced_stop(frame,label):
     frame.tkraise()
     label['text'] = "You were productive for " + hms(paced_timer)+ "!\nWould you like to start again?"
 
+# counter for timed mode
 def timedcounter(time_display):
     global timed_dur
     global timed_elapsed
     global mainframe
     global mainconsole_text
+    global timedlobby_start
+    global timedlobby_pause
+    global timedlobby_stop
     while timed_dur != timed_elapsed:
         if timed_paused == True:
+            timedlobby_start['state']="normal"
+            timedlobby_pause['state']="disabled"
+            timedlobby_stop['state']="normal"
             return
         time.sleep(1)
         time_display['text'] = hms(timed_dur-timed_elapsed)
@@ -199,9 +263,9 @@ def timed_pause():
     global timedlobby_pause
     global timedlobby_stop
     timed_paused = True
-    timedlobby_start['state']="normal"
+    timedlobby_start['state']="disabled"
     timedlobby_pause['state']="disabled"
-    timedlobby_stop['state']="normal"
+    timedlobby_stop['state']="disabled"
 
 # timed_stop - ends current timed session
 def timed_stop(frame, label):
@@ -211,11 +275,94 @@ def timed_stop(frame, label):
     global timed_paused
     timed_enddt = get_datetime()
     timed_paused = True
-    data = '"{}","{}","timed","{}","{}"\n'.format(timed_startdt,timed_enddt,hms(timed_elapsed),timed_desc)
+    data = '"{}","{}","Timed","{}","{}"\n'.format(timed_startdt,timed_enddt,hms(timed_elapsed),timed_desc)
     with open("prod.data","a+") as f:
         f.write(data)
     frame.tkraise()
     label['text'] = "You were productive for " + hms(timed_elapsed)+ "!\nWould you like to start again?"
+
+# counter for pomodoro mode
+def pomodorocounter(time_display):
+    global pomodoro_dur
+    global pomodoro_break
+    global pomodoro_state
+    global pomodoro_elapsed
+    global mainframe
+    global mainconsole_text
+    global pomodorobreak_elapsed
+    global pomodoro_total
+    global pomodorolobby_start
+    global pomodorolobby_pause
+    global pomodorolobby_stop
+    if pomodoro_state == 0:
+        while pomodoro_dur != pomodoro_elapsed:
+            if pomodoro_paused == True:
+                pomodorolobby_start['state']="normal"
+                pomodorolobby_pause['state']="disabled"
+                pomodorolobby_stop['state']="normal"
+                return
+            time.sleep(1)
+            time_display['text'] = hms(pomodoro_dur-pomodoro_elapsed)
+            pomodoro_elapsed += 1
+            pomodoro_total += 1
+        # Alert here
+        pomodoro_state = 1
+        pomodoro_elapsed = 0
+        pomodorocounter(time_display)
+    elif pomodoro_state == 1:
+        while pomodoro_break != pomodorobreak_elapsed:
+            if pomodoro_paused == True:
+                pomodorolobby_start['state']="normal"
+                pomodorolobby_pause['state']="disabled"
+                pomodorolobby_stop['state']="normal"
+                return
+            time.sleep(1)
+            time_display['text'] = hms(pomodoro_break-pomodorobreak_elapsed)
+            pomodorobreak_elapsed += 1
+        # Alert here
+        pomodoro_state = 0
+        pomodorobreak_elapsed = 0
+        pomodorocounter(time_display)
+
+# pomodoro_start - starts / resumes pomodorotime
+def pomodoro_start(time_display):
+    global pomodoro_dur
+    global pomodorolobby_start
+    global pomodorolobby_pause
+    global pomodorolobby_stop
+    global pomodoro_paused
+    global pomodoro_break
+    pomodorolobby_start['state']="disabled"
+    pomodorolobby_pause['state']="normal"
+    pomodorolobby_stop['state']="normal"
+    pomodoro_paused = False
+    threading.Thread(target=pomodorocounter, args=(time_display,), daemon=True).start()
+
+# pomodoro_pause - for pausing pomodoro_timer
+def pomodoro_pause():
+    global pomodoro_paused
+    global pomodorolobby_start
+    global pomodorolobby_pause
+    global pomodorolobby_stop
+    pomodoro_paused = True
+    pomodorolobby_start['state']="disabled"
+    pomodorolobby_pause['state']="disabled"
+    pomodorolobby_stop['state']="disabled"
+
+# pomodoro_stop - ends current pomodoro session
+def pomodoro_stop(frame, label):
+    global pomodoro_enddt
+    global pomodoro_elapsed
+    global pomodoro_desc
+    global pomodoro_paused
+    global pomodoro_total
+    pomodoro_enddt = get_datetime()
+    pomodoro_paused = True
+    data = '"{}","{}","Pomodoro","{}","{}"\n'.format(pomodoro_startdt,pomodoro_enddt,hms(pomodoro_total),pomodoro_desc)
+    with open("prod.data","a+") as f:
+        f.write(data)
+    frame.tkraise()
+    label['text'] = "You were productive for " + hms(pomodoro_total)+ "!\nWould you like to start again?"
 
 # Calling instances of the frames
 timedframe = tk.Frame(root, bg=bg, width=350, height=300)
@@ -244,7 +391,7 @@ maintimed_button = tk.Button(main_input, text="Timed", font=bigfont, bg=bg,
                         borderwidth=1, command=lambda:ssframe(timedframe, "timed"))
 maintimed_button.pack(pady=10)
 mainpomodoro_button = tk.Button(main_input, text="Pomodoro/Modified", font=bigfont, 
-                        bg=bg, borderwidth=1, command=lambda:ssframe(pomodoroframe, None))
+                        bg=bg, borderwidth=1, command=lambda:ssframe(pomodoroframe, "pomodoro"))
 mainpomodoro_button.pack(pady=10)
 counter_label = tk.Label(main_input, text="You've been productive for X minutes \n| hours today!", font=hfont, wraplength=300)
 counter_label.pack()
@@ -336,6 +483,40 @@ pomodoro_input.place(relwidth=0.95, relheight= 0.65, relx=0.025, rely=0.3)
 pomodoroconsole_text = tk.Label(pomodoro_console, text="Let's do productivity using the pomodoro technique. What will we be doing?", 
                             bg=fg, justify=LEFT, font=font, wraplength=300)
 pomodoroconsole_text.pack(pady=5, side=TOP, anchor="n")
+pomodoroinput_text1 = tk.Label(pomodoro_input, text="I will be doing this activity:", bg=bg, font=font)
+pomodoroinput_text1.pack(pady=1)
+pomodoroinput_desc = tk.Text(pomodoro_input, font=font, width=30, height=1)
+pomodoroinput_desc.pack(pady=1)
+pomodoroinput_text2 = tk.Label(pomodoro_input, text="for this amount of time: (in minutes)", bg=bg, font=font)
+pomodoroinput_text2.pack(pady=1)
+pomodoroinput_dur = tk.Text(pomodoro_input, font=font, width=3, height=1)
+pomodoroinput_dur.pack(pady=1)
+pomodoroinput_text3 = tk.Label(pomodoro_input, text="taking a break after for this amount of time: (in minutes)", bg=bg, font=font)
+pomodoroinput_text3.pack(pady=1)
+pomodoroinput_break = tk.Text(pomodoro_input, font=font, width=3, height=1)
+pomodoroinput_break.pack(pady=1)
+pomodoroinput_start = tk.Button(pomodoro_input, text="Start", font=font, bg=bg, borderwidth=1, command=lambda:ssframe(pomodorolobby,"pomodorolobby"))
+pomodoroinput_start.pack(pady=2)
+pomodoroinput_back = tk.Button(pomodoro_input, text="Back to Main", font=font, bg=bg, borderwidth=1, command=lambda:ssframe(mainframe, None))
+pomodoroinput_back.pack(pady=2)
+
+# -- Pomodorolobby -- #
+pomodorolobby_console = tk.Frame(pomodorolobby, bg=fg)
+pomodorolobby_console.place(relwidth=0.95, relheight=0.25, relx=0.025, rely=0.025)
+pomodorolobby_input = tk.Frame(pomodorolobby, bg=bg)
+pomodorolobby_input.place(relwidth=0.95, relheight= 0.65, relx=0.025, rely=0.3)
+# Elements of pomodorolobby
+pomodorolobbyconsole_text = tk.Label(pomodorolobby_console, text="Let's Work!", 
+                        bg=fg, justify=CENTER, font=bigfont, wraplength=300)
+pomodorolobbyconsole_text.pack(pady=5, anchor="n")
+pomodorolobby_timer = tk.Label(pomodorolobby_input, text='00:00:00', font=timefont, justify=CENTER, bg=bg)
+pomodorolobby_timer.pack(anchor="n")
+pomodorolobby_start = tk.Button(pomodorolobby_input, text='Start Now', width=13, font=bigfont, state="normal", command=lambda:pomodoro_start(pomodorolobby_timer))
+pomodorolobby_start.pack(side="left", padx=0.5)
+pomodorolobby_pause = tk.Button(pomodorolobby_input, text='Pause', width=13, font=bigfont, state="disabled", command=lambda:pomodoro_pause())
+pomodorolobby_pause.pack(side="left", padx=0.5)
+pomodorolobby_stop = tk.Button(pomodorolobby_input, text='End Session', width=13, font=bigfont, state="disabled", command=lambda:pomodoro_stop(mainframe, mainconsole_text))
+pomodorolobby_stop.pack(side="left", padx=0.5)
 
 # Mainloop
 root.resizable(0,0)
