@@ -1,12 +1,10 @@
 import time
 from tkinter.constants import CENTER, LEFT, TOP, W
-import prod_funct
 import tkinter as tk
 from tkinter import messagebox
 import threading
 import datetime
 import time
-import os
 
 # Styling
 bg = "#E7D2CC" 
@@ -27,6 +25,10 @@ paced_enddt = None
 # gvars - timed
 timed_desc = None
 timed_dur = None
+timed_elapsed = 0
+timed_paused = False
+timed_startdt = None
+timed_enddt = None
 # gvars - pomodoro
 pomodoro_desc = None
 pomodoro_dur = None
@@ -60,6 +62,13 @@ def ssframe(frame, savevars):
     global paced_timer
     global paced_paused
     global pacedlobby_timer
+    global timed_desc
+    global timed_dur
+    global timed_paused
+    global timed_startdt
+    global timed_enddt
+    global timed_elapsed
+    global timedinput_desc
     if savevars == None: # For updates that don't have input elements
         pass
     elif savevars == "pacedlobby":
@@ -69,7 +78,7 @@ def ssframe(frame, savevars):
             messagebox.showinfo("Info","Please enter your type of productivity.")
             pacedframe.tkraise()
             return
-        pacedlobbyconsole_text['text'] = "Let's Work!\nActivity: "+paced_desc
+        pacedlobbyconsole_text['text'] = "Let's work at our own pace!\nActivity: "+paced_desc
     elif savevars == "paced":
         paced_timer = 0
         paced_paused = False
@@ -79,7 +88,31 @@ def ssframe(frame, savevars):
         pacedlobby_stop['state']="disabled"
         pacedlobby_timer['text']="00:00:00"
     elif savevars == "timed":
-        pass
+        timed_dur = 0
+        timed_elapsed = 0
+        timed_paused = False
+        timedinput_desc.delete("1.0","end")
+        timedinput_dur.delete("1.0", "end")
+        timedlobby_start['state']="normal"
+        timedlobby_pause['state']="disabled"
+        timedlobby_stop['state']="disabled"
+    elif savevars == "timedlobby":
+        timed_startdt = get_datetime()
+        timed_desc = timedinput_desc.get(1.0, "end-1c").strip()
+        if timed_desc == "":
+            messagebox.showinfo("Info","Please enter your type of productivity.")
+            timedframe.tkraise()
+            return
+        try:
+            timed_dur = int(timedinput_dur.get(1.0, "end-1c").strip())
+            timed_dur = timed_dur * 60 #Convert from minutes to seconds
+            timedlobby_timer['text']=hms(timed_dur)
+            timedlobbyconsole_text['text'] = "Let's work until our timer finishes!\nActivity: "+timed_desc
+        except:
+            messagebox.showinfo("Info","Please enter an integer for the time (in minutes).")
+            timedinput_dur.delete("1.0", "end")
+            timedframe.tkraise()
+            return
     elif savevars == "pomodoro":
         pass
     frame.tkraise() # Brings frame up
@@ -106,7 +139,6 @@ def paced_start(time_display):
     pacedlobby_stop['state']="normal"
     paced_paused = False
     threading.Thread(target=pacedcounter, args=(time_display,), daemon=True).start()
-    pass
 
 # paced_pause - pausing timer
 def paced_pause(): 
@@ -133,6 +165,58 @@ def paced_stop(frame,label):
     frame.tkraise()
     label['text'] = "You were productive for " + hms(paced_timer)+ "!\nWould you like to start again?"
 
+def timedcounter(time_display):
+    global timed_dur
+    global timed_elapsed
+    global mainframe
+    global mainconsole_text
+    while timed_dur != timed_elapsed:
+        if timed_paused == True:
+            return
+        time.sleep(1)
+        time_display['text'] = hms(timed_dur-timed_elapsed)
+        timed_elapsed += 1
+    # ALERT HERE
+    timed_stop(mainframe,mainconsole_text)
+
+# timed_start - for resuming/starting timed_timer
+def timed_start(time_display):
+    global timed_dur
+    global timedlobby_start
+    global timedlobby_pause
+    global timedlobby_stop
+    global timed_paused
+    timedlobby_start['state']="disabled"
+    timedlobby_pause['state']="normal"
+    timedlobby_stop['state']="normal"
+    timed_paused = False
+    threading.Thread(target=timedcounter, args=(time_display,), daemon=True).start()
+
+# timed_pause - for pausing timed_timer
+def timed_pause():
+    global timed_paused
+    global timedlobby_start
+    global timedlobby_pause
+    global timedlobby_stop
+    timed_paused = True
+    timedlobby_start['state']="normal"
+    timedlobby_pause['state']="disabled"
+    timedlobby_stop['state']="normal"
+
+# timed_stop - ends current timed session
+def timed_stop(frame, label):
+    global timed_enddt
+    global timed_elapsed
+    global timed_desc
+    global timed_paused
+    timed_enddt = get_datetime()
+    timed_paused = True
+    data = '"{}","{}","timed","{}","{}"\n'.format(timed_startdt,timed_enddt,hms(timed_elapsed),timed_desc)
+    with open("prod.data","a+") as f:
+        f.write(data)
+    frame.tkraise()
+    label['text'] = "You were productive for " + hms(timed_elapsed)+ "!\nWould you like to start again?"
+
 # Calling instances of the frames
 timedframe = tk.Frame(root, bg=bg, width=350, height=300)
 pacedframe = tk.Frame(root, bg=bg, width=350, height=300)
@@ -157,7 +241,7 @@ mainpaced_button = tk.Button(main_input, text="Own Pace", font=bigfont, bg=bg,
                         borderwidth=1, command=lambda:ssframe(pacedframe, "paced"))
 mainpaced_button.pack(pady=10)
 maintimed_button = tk.Button(main_input, text="Timed", font=bigfont, bg=bg, 
-                        borderwidth=1, command=lambda:ssframe(timedframe, None))
+                        borderwidth=1, command=lambda:ssframe(timedframe, "timed"))
 maintimed_button.pack(pady=10)
 mainpomodoro_button = tk.Button(main_input, text="Pomodoro/Modified", font=bigfont, 
                         bg=bg, borderwidth=1, command=lambda:ssframe(pomodoroframe, None))
@@ -211,6 +295,37 @@ timed_input.place(relwidth=0.95, relheight= 0.65, relx=0.025, rely=0.3)
 timedconsole_text = tk.Label(timed_console, text="Let's do productivity for a set amount of time. What will we be doing?", 
                             bg=fg, justify=LEFT, font=font, wraplength=300)
 timedconsole_text.pack(pady=5, side=TOP, anchor="n")
+timedinput_text1 = tk.Label(timed_input, text="I will be doing this activity:", bg=bg, font=font)
+timedinput_text1.pack(pady=2)
+timedinput_desc = tk.Text(timed_input, font=font, width=30, height=2)
+timedinput_desc.pack(pady=2)
+timedinput_text2 = tk.Label(timed_input, text="for this amount of time: (in minutes)", bg=bg, font=font)
+timedinput_text2.pack(pady=2)
+timedinput_dur = tk.Text(timed_input, font=timefont, width=3, height=1)
+timedinput_dur.pack(pady=2)
+timedinput_start = tk.Button(timed_input, text="Start", font=font, bg=bg, borderwidth=1, command=lambda:ssframe(timedlobby,"timedlobby"))
+timedinput_start.pack(pady=2)
+timedinput_back = tk.Button(timed_input, text="Back to Main", font=font, bg=bg, borderwidth=1, command=lambda:ssframe(mainframe, None))
+timedinput_back.pack(pady=2)
+
+# -- Timedlobby -- #
+timedlobby_console = tk.Frame(timedlobby, bg=fg)
+timedlobby_console.place(relwidth=0.95, relheight=0.25, relx=0.025, rely=0.025)
+timedlobby_input = tk.Frame(timedlobby, bg=bg)
+timedlobby_input.place(relwidth=0.95, relheight= 0.65, relx=0.025, rely=0.3)
+# Elements of timedlobby
+timedlobbyconsole_text = tk.Label(timedlobby_console, text="Let's Work!", 
+                        bg=fg, justify=CENTER, font=bigfont, wraplength=300)
+timedlobbyconsole_text.pack(pady=5, anchor="n")
+timedlobby_timer = tk.Label(timedlobby_input, text='00:00:00', font=timefont, justify=CENTER, bg=bg)
+timedlobby_timer.pack(anchor="n")
+timedlobby_start = tk.Button(timedlobby_input, text='Start Now', width=13, font=bigfont, state="normal", command=lambda:timed_start(timedlobby_timer))
+timedlobby_start.pack(side="left", padx=0.5)
+timedlobby_pause = tk.Button(timedlobby_input, text='Pause', width=13, font=bigfont, state="disabled", command=lambda:timed_pause())
+timedlobby_pause.pack(side="left", padx=0.5)
+timedlobby_stop = tk.Button(timedlobby_input, text='End Session', width=13, font=bigfont, state="disabled", command=lambda:timed_stop(mainframe, mainconsole_text))
+timedlobby_stop.pack(side="left", padx=0.5)
+
 
 # -- Pomodoroframe -- #
 pomodoro_console = tk.Frame(pomodoroframe, bg=fg)
