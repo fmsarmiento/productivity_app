@@ -6,6 +6,7 @@ import threading
 import datetime
 import time
 import re
+from datetime import timedelta
 
 # Styling
 bg = "#E7D2CC" 
@@ -84,6 +85,63 @@ def day_productivity():
             current_time = total_time
             y = y + 1
     return "Today, you had {} sessions, totaling to a productive time of {}!".format(y,total_time)
+
+# configure prod.data to fit our needs
+def data_configure():
+    fixed_data = ""
+    with open("prod.data","r+") as f:
+        x = f.readlines()
+    for line in x:
+        newline = line[1:].replace("\n","")
+        newline = newline[:-1]
+        line_elts = newline.split('","')
+        re_month = r"([\w ,:]+)\,"
+        mo_start = re.search(re_month, line_elts[0])
+        mo_end = re.search(re_month, line_elts[1])
+        if mo_start[1] != mo_end[1]:
+            # Discrepancy found
+            day_start = int(mo_start[1][-2:])
+            day_end = int(mo_end[1][-2:])
+            if day_start+1 != day_end:
+                print("Discrepancy is too big (more than 1 day). Requesting for manual change. See prod.data for more information.")
+                print("Data: ",line)
+                messagebox.showinfo("Error","Discrepancy on prod.data is too big (more than 1 day). Requesting for manual change. See prod.data for more information. Update aborted.")
+                return
+            print("Found a discrepancy on line: Different start and end dates",line)
+            start_time = line_elts[0].strip(mo_start[1])
+            start_time = start_time.replace(", ","")
+            start_time = datetime.datetime.strptime(start_time, "%I:%M %p")
+            start_time = start_time.strftime("%H:%M:%S")
+            end_time = line_elts[1].strip(mo_end[1])
+            end_time = end_time.replace(", ","")
+            end_time = datetime.datetime.strptime(end_time, "%I:%M %p")
+            end_time = end_time.strftime("%H:%M:%S")
+            duration = line_elts[3]
+            if int(hms_add(start_time,duration)[0:2]) >= 24:
+                print("Splitting data entry into 2.")
+                new_enddt = mo_start[1]+", 11:59 PM"
+                dur1 = timedelta(hours=23, minutes=59) - timedelta(hours=int(start_time[0:2]),minutes=int(start_time[3:5]))
+                dur2 = timedelta(hours=int(duration[0:2]),minutes=int(duration[3:5]),seconds=int(duration[6:8])) - dur1
+                temp = str(dur1).split(":")
+                dur1 = "{:02d}:{:02d}:{:02d}".format(int(temp[0]),int(temp[1]),int(temp[2]))
+                temp = str(dur2).split(":")
+                dur2 = "{:02d}:{:02d}:{:02d}".format(int(temp[0]),int(temp[1]),int(temp[2]))
+                edit_entry1 = '"{}","{}","{}","{}","{}"'.format(line_elts[0],new_enddt,line_elts[2],dur1,line_elts[4])
+                print(edit_entry1)
+                edit_entry2 = '"{}","{}","{}","{}","{}"'.format(mo_end[1]+", 12:00 AM",line_elts[1],line_elts[2],dur2,line_elts[4])
+                print(edit_entry2)
+                fixed_data = fixed_data + edit_entry1 + "\n"+ edit_entry2
+            else:
+                print("Renaming data into 1 day.")
+                new_enddt = mo_start[1]+", 11:59 PM"
+                edit_entry1 = '"{}","{}","{}","{}","{}"'.format(line_elts[0],new_enddt,line_elts[2],line_elts[3],line_elts[4])
+                fixed_data = fixed_data + edit_entry1
+                print(edit_entry1)
+        else:
+            fixed_data = fixed_data + line
+    with open("prod.data","w+") as f2:
+        f2.write(fixed_data)
+        print("Updated.")
 
 # ssframe - shows and saves variables of inputs, if any
 def ssframe(frame, savevars):
@@ -194,6 +252,7 @@ def ssframe(frame, savevars):
             return
         pomodorolobbyconsole_text['text'] = "Let's work using the pomodoro technique!\nProductivity: "+hms(pomodoro_dur)+"|Break: "+hms(pomodoro_break)+"\nActivity: "+pomodoro_desc
     frame.tkraise() # Brings frame up
+
 # pacedcounter - thread funct for timer
 def pacedcounter(time_display):
     global paced_timer
@@ -242,11 +301,15 @@ def paced_stop(frame,label):
     global paced_paused
     paced_enddt = get_datetime()
     paced_paused = True
+    # Add fnx here to add 2 diff data if it finished on different days
+    if datetime.datetime.now().strftime("%B %d") not in paced_startdt:
+        pass
     data = '"{}","{}","Paced","{}","{}"\n'.format(paced_startdt,paced_enddt,hms(paced_timer),paced_desc)
     with open("prod.data","a+") as f:
         f.write(data)
     frame.tkraise()
     label['text'] = "You were productive for " + hms(paced_timer)+ "!\nWould you like to start again?"
+    counter_label['text']=day_productivity()
 
 # counter for timed mode
 def timedcounter(time_display):
@@ -302,11 +365,12 @@ def timed_stop(frame, label):
     timed_enddt = get_datetime()
     timed_paused = True
     data = '"{}","{}","Timed","{}","{}"\n'.format(timed_startdt,timed_enddt,hms(timed_elapsed),timed_desc)
+    # Add fnx here to add 2 diff data if it finished on different days
     with open("prod.data","a+") as f:
         f.write(data)
     frame.tkraise()
     label['text'] = "You were productive for " + hms(timed_elapsed)+ "!\nWould you like to start again?"
-
+    counter_label['text']=day_productivity()
 # counter for pomodoro mode
 def pomodorocounter(time_display):
     global pomodoro_dur
@@ -385,11 +449,12 @@ def pomodoro_stop(frame, label):
     pomodoro_enddt = get_datetime()
     pomodoro_paused = True
     data = '"{}","{}","Pomodoro","{}","{}"\n'.format(pomodoro_startdt,pomodoro_enddt,hms(pomodoro_total),pomodoro_desc)
+    # Add fnx here to add 2 diff data if it finished on different days
     with open("prod.data","a+") as f:
         f.write(data)
     frame.tkraise()
     label['text'] = "You were productive for " + hms(pomodoro_total)+ "!\nWould you like to start again?"
-
+    counter_label['text']=day_productivity()
 # Calling instances of the frames
 timedframe = tk.Frame(root, bg=bg, width=350, height=300)
 pacedframe = tk.Frame(root, bg=bg, width=350, height=300)
@@ -545,5 +610,6 @@ pomodorolobby_stop = tk.Button(pomodorolobby_input, text='End Session', width=13
 pomodorolobby_stop.pack(side="left", padx=0.5)
 
 # Mainloop
+data_configure()
 root.resizable(0,0)
 root.mainloop()
