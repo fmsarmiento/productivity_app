@@ -7,6 +7,7 @@ import datetime
 import time
 import re
 from datetime import timedelta
+from tkinter import ttk
 
 # Styling
 bg = "#E7D2CC" 
@@ -67,6 +68,59 @@ def hms_add(x,y):
     m = (int(x[3:5]) + int(y[3:5])) * 60
     h = (int(x[0:2]) + int(y[0:2])) * 3600
     return hms(s+m+h)
+
+# daily stats
+def statsdaily(label):
+    label.delete(*label.get_children())
+    with open("prod.data","r+") as f:
+        x = f.readlines()
+    day_now = datetime.datetime.now().strftime("%B %d")
+    re_month = r"([\w ,:]+)\,"
+    for line in x:
+        newline = line[1:].replace("\n","")
+        line_elts = newline[:-1].split('","')
+        day = re.search(re_month, line_elts[0])
+        if day[1] == day_now:
+            label.insert('','end',text='1', values=(day[1],line_elts[2],line_elts[3],line_elts[4]))
+    label.pack()
+
+def statsweekly(label):
+    label.delete(*label.get_children())
+    with open("prod.data","r+") as f:
+        x = f.readlines()
+    day_now = datetime.datetime.now()
+    week = []
+    week.append(day_now.strftime("%B %d"))
+    i = 1
+    while i != 7:
+        week_ago = (day_now - timedelta(days=i)).strftime("%B %d")
+        week.append(week_ago)
+        i += 1
+    print(week)
+    re_month = r"([\w ,:]+)\,"
+    for current_day in week:
+        print(current_day)
+        for line in x:
+            newline = line[1:].replace("\n","")
+            line_elts = newline[:-1].split('","')
+            day = re.search(re_month, line_elts[0])
+            if day[1] == current_day:
+                label.insert('','end',text='1', values=(day[1],line_elts[2],line_elts[3],line_elts[4]))
+    label.pack()
+
+def statsmonthly(label):
+    label.delete(*label.get_children())
+    with open("prod.data","r+") as f:
+        x = f.readlines()
+    month = datetime.datetime.now().strftime("%B")
+    re_month = r"([\w ,:]+)\,"
+    for line in x:
+        newline = line[1:].replace("\n","")
+        line_elts = newline[:-1].split('","')
+        day = re.search(re_month, line_elts[0])
+        if month in day[1]:
+            label.insert('','end',text='1', values=(day[1],line_elts[2],line_elts[3],line_elts[4]))
+    label.pack()
 
 # Return productivity amount for the day
 def day_productivity():
@@ -462,8 +516,9 @@ pomodoroframe = tk.Frame(root, bg=bg, width=350, height=300)
 timedlobby = tk.Frame(root, bg=bg, width=350, height=300)
 pacedlobby = tk.Frame(root, bg=bg, width=350, height=300)
 pomodorolobby = tk.Frame(root, bg=bg, width=350, height=300)
+stats = tk.Frame(root, bg=bg, width=350, height=300)
 mainframe = tk.Frame(root, bg=bg, width=350, height=300) # Must always be at the bottom so it shows up first!
-for frame in (timedframe, pacedframe, pomodoroframe, timedlobby, pacedlobby, pomodorolobby, mainframe):
+for frame in (timedframe, pacedframe, pomodoroframe, timedlobby, pacedlobby, pomodorolobby, stats, mainframe):
   frame.grid(row=0,column=0,sticky='nsew') # Show frames
 
 # -- Mainframe -- #
@@ -474,18 +529,21 @@ main_input.place(relwidth=0.95, relheight= 0.65, relx=0.025, rely=0.3)
 # Elements of mainframe
 mainconsole_text = tk.Label(main_console, text="Hello, welcome back! Let's get your day started. What productivity will we be doing today?", 
                             bg=fg, justify=LEFT, font=font, wraplength=300)
-mainconsole_text.pack(pady=5, side=TOP, anchor="n")
+mainconsole_text.pack(pady=3, side=TOP, anchor="n")
 mainpaced_button = tk.Button(main_input, text="Own Pace", font=bigfont, bg=bg, 
                         borderwidth=1, command=lambda:ssframe(pacedframe, "paced"))
-mainpaced_button.pack(pady=10)
+mainpaced_button.pack(pady=3)
 maintimed_button = tk.Button(main_input, text="Timed", font=bigfont, bg=bg, 
                         borderwidth=1, command=lambda:ssframe(timedframe, "timed"))
-maintimed_button.pack(pady=10)
+maintimed_button.pack(pady=3)
 mainpomodoro_button = tk.Button(main_input, text="Pomodoro/Modified", font=bigfont, 
                         bg=bg, borderwidth=1, command=lambda:ssframe(pomodoroframe, "pomodoro"))
-mainpomodoro_button.pack(pady=10)
+mainpomodoro_button.pack(pady=3)
 counter_label = tk.Label(main_input, text=day_productivity(), font=bigfont, wraplength=300)
 counter_label.pack()
+mainstats_button = tk.Button(main_input, text="See your stats!", font=bigfont, 
+                        bg=bg, borderwidth=1, command=lambda:ssframe(stats, None))
+mainstats_button.pack(pady=7)
 
 # -- Pacedframe -- #
 paced_console = tk.Frame(pacedframe, bg=fg)
@@ -608,6 +666,31 @@ pomodorolobby_pause = tk.Button(pomodorolobby_input, text='Pause', width=13, fon
 pomodorolobby_pause.pack(side="left", padx=0.5)
 pomodorolobby_stop = tk.Button(pomodorolobby_input, text='End Session', width=13, font=bigfont, state="disabled", command=lambda:pomodoro_stop(mainframe, mainconsole_text))
 pomodorolobby_stop.pack(side="left", padx=0.5)
+
+# -- stats -- #
+stats_console = tk.Frame(stats, bg=fg)
+stats_console.place(relwidth=0.95, relheight=0.3, relx=0.025, rely=0.025)
+stats_text = tk.Label(stats_console, text="Here's the fruit of your productivity:", font=hfont, justify=CENTER, bg=fg)
+stats_text.pack(anchor="n", pady=2)
+stats_frame = tk.Frame(stats, bg=fg)
+stats_frame.place(relwidth=0.95, relheight=0.6, relx=0.025, rely=0.35)
+#stats_label = tk.Label(stats_frame, text="test", font=font, bg=fg)
+#stats_label.pack(anchor="w", pady=2)
+stats_label = ttk.Treeview(stats_frame, column=("Date", "Type", "Duration", "Description"), show='headings', height=8)
+stats_label.column("# 1", anchor=CENTER, width=90)
+stats_label.heading("# 1", text="Date")
+stats_label.column("# 2", anchor=CENTER, width=70)
+stats_label.heading("# 2", text="Type")
+stats_label.column("# 3", anchor=CENTER, width=70)
+stats_label.heading("# 3", text="Duration")
+stats_label.column("# 4", anchor=CENTER, width=100)
+stats_label.heading("# 4", text="Description")
+stats_daily = tk.Button(stats_console, text='Daily', width=12, font=bigfont, bg=bg, command=lambda:statsdaily(stats_label))
+stats_daily.pack(side="left", padx=2)
+stats_weekly = tk.Button(stats_console, text='Weekly', width=12, font=bigfont, bg=bg, command=lambda:statsweekly(stats_label))
+stats_weekly.pack(side="left", padx=2)
+stats_alltime = tk.Button(stats_console, text='All Time', width=12, font=bigfont, bg=bg, command=lambda:statsmonthly(stats_label))
+stats_alltime.pack(side="left", padx=2)
 
 # Mainloop
 data_configure()
