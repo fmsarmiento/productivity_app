@@ -71,6 +71,10 @@ def hms_add(x,y):
 
 # daily stats
 def statsdaily(label):
+    global stats_text
+    duration = []
+    monthday = []
+    ctr = 0
     label.delete(*label.get_children())
     with open("prod.data","r+") as f:
         x = f.readlines()
@@ -82,9 +86,27 @@ def statsdaily(label):
         day = re.search(re_month, line_elts[0])
         if day[1] == day_now:
             label.insert('','end',text='1', values=(day[1],line_elts[2],line_elts[3],line_elts[4]))
+            duration.append(line_elts[3])
+            monthday.append(day[1])
+            ctr += 1
     label.pack()
+    z = "00:00:00"
+    dur_list = []
+    for y in duration:
+        z = hms_add(z,y)
+        dur_list.append((int(y[0:2])*3600) + (int(y[3:5])*60) + int(y[6:8]))
+    z = (int(z[0:2])*3600) + (int(z[3:5])*60) + int(z[6:8])
+    average = hms(int(z/ctr))
+    max_val = hms(max(dur_list))
+    min_val = hms(min(dur_list))
+    stats_text['text'] = "Average session time is {}\nLongest session time is {}\nShortest session time is {}\nTotal daily productivity time is {}".format(average, max_val, min_val, hms(z))
 
+# weekly stats
 def statsweekly(label):
+    global stats_text
+    duration = []
+    monthday = []
+    ctr = 0
     label.delete(*label.get_children())
     with open("prod.data","r+") as f:
         x = f.readlines()
@@ -96,19 +118,50 @@ def statsweekly(label):
         week_ago = (day_now - timedelta(days=i)).strftime("%B %d")
         week.append(week_ago)
         i += 1
-    print(week)
     re_month = r"([\w ,:]+)\,"
     for current_day in week:
-        print(current_day)
         for line in x:
             newline = line[1:].replace("\n","")
             line_elts = newline[:-1].split('","')
             day = re.search(re_month, line_elts[0])
             if day[1] == current_day:
                 label.insert('','end',text='1', values=(day[1],line_elts[2],line_elts[3],line_elts[4]))
+                duration.append(line_elts[3])
+                monthday.append(day[1])
+                ctr += 1
     label.pack()
+    z = "00:00:00"
+    dur_list = []
+    for y in duration:
+        z = hms_add(z,y)
+        dur_list.append((int(y[0:2])*3600) + (int(y[3:5])*60) + int(y[6:8]))
+    z = (int(z[0:2])*3600) + (int(z[3:5])*60) + int(z[6:8])
+    average = hms(int(z/ctr))
+    max_val = hms(max(dur_list))
+    min_val = hms(min(dur_list))
+    stats_text['text'] = "SESSION Ave-{}|Longest-{}|Shortest-{}".format(average, max_val, min_val)
+    i = 0
+    month_time = {}
+    while i != len(dur_list):
+        if monthday[i] in month_time.keys():
+            month_time[monthday[i]] += dur_list[i]
+        else:
+            month_time[monthday[i]] = dur_list[i]
+        i += 1
+    total_dur = 0
+    for dur in month_time.values():
+        total_dur = total_dur + dur
+    daily_ave = total_dur/len(month_time)
+    max_key = max(month_time, key=month_time.get)
+    min_key = min(month_time, key=month_time.get)
+    stats_text['text'] = "Average session is {}|Longest session is {}\nShortest session is {}\nDaily Average is {} and total is {}\nLongest daily time is {} on {}\nShortest daily time is {} on {}".format(average, max_val, min_val, hms(daily_ave),hms(total_dur),hms(month_time[max_key]),max_key,hms(month_time[min_key]),min_key)
 
+# monthly stats
 def statsmonthly(label):
+    global stats_text
+    duration = []
+    monthday = []
+    ctr = 0
     label.delete(*label.get_children())
     with open("prod.data","r+") as f:
         x = f.readlines()
@@ -120,7 +173,34 @@ def statsmonthly(label):
         day = re.search(re_month, line_elts[0])
         if month in day[1]:
             label.insert('','end',text='1', values=(day[1],line_elts[2],line_elts[3],line_elts[4]))
+            duration.append(line_elts[3])
+            monthday.append(day[1])
+            ctr += 1
     label.pack()
+    z = "00:00:00"
+    dur_list = []
+    for y in duration:
+        z = hms_add(z,y)
+        dur_list.append((int(y[0:2])*3600) + (int(y[3:5])*60) + int(y[6:8]))
+    z = (int(z[0:2])*3600) + (int(z[3:5])*60) + int(z[6:8])
+    average = hms(int(z/ctr))
+    max_val = hms(max(dur_list))
+    min_val = hms(min(dur_list))
+    i = 0
+    month_time = {}
+    while i != len(dur_list):
+        if monthday[i] in month_time.keys():
+            month_time[monthday[i]] += dur_list[i]
+        else:
+            month_time[monthday[i]] = dur_list[i]
+        i += 1
+    total_dur = 0
+    for dur in month_time.values():
+        total_dur = total_dur + dur
+    daily_ave = total_dur/len(month_time)
+    max_key = max(month_time, key=month_time.get)
+    min_key = min(month_time, key=month_time.get)
+    stats_text['text'] = "Average session is {}|Longest session is {}\nShortest session is {}\nDaily Average is {} and total is {}\nLongest daily time is {} on {}\nShortest daily time is {} on {}".format(average, max_val, min_val, hms(daily_ave),hms(total_dur),hms(month_time[max_key]),max_key,hms(month_time[min_key]),min_key)
 
 # Return productivity amount for the day
 def day_productivity():
@@ -195,7 +275,6 @@ def data_configure():
             fixed_data = fixed_data + line
     with open("prod.data","w+") as f2:
         f2.write(fixed_data)
-        print("Updated.")
 
 # ssframe - shows and saves variables of inputs, if any
 def ssframe(frame, savevars):
@@ -670,13 +749,13 @@ pomodorolobby_stop.pack(side="left", padx=0.5)
 # -- stats -- #
 stats_console = tk.Frame(stats, bg=fg)
 stats_console.place(relwidth=0.95, relheight=0.3, relx=0.025, rely=0.025)
-stats_text = tk.Label(stats_console, text="Here's the fruit of your productivity:", font=hfont, justify=CENTER, bg=fg)
+stats_text = tk.Label(stats_console, text="Here's the fruit of your productivity:", font=font, justify=CENTER, bg=fg)
 stats_text.pack(anchor="n", pady=2)
 stats_frame = tk.Frame(stats, bg=fg)
-stats_frame.place(relwidth=0.95, relheight=0.6, relx=0.025, rely=0.35)
+stats_frame.place(relwidth=0.95, relheight=0.63, relx=0.025, rely=0.35)
 #stats_label = tk.Label(stats_frame, text="test", font=font, bg=fg)
 #stats_label.pack(anchor="w", pady=2)
-stats_label = ttk.Treeview(stats_frame, column=("Date", "Type", "Duration", "Description"), show='headings', height=8)
+stats_label = ttk.Treeview(stats_frame, column=("Date", "Type", "Duration", "Description"), show='headings', height=6)
 stats_label.column("# 1", anchor=CENTER, width=90)
 stats_label.heading("# 1", text="Date")
 stats_label.column("# 2", anchor=CENTER, width=70)
@@ -685,11 +764,12 @@ stats_label.column("# 3", anchor=CENTER, width=70)
 stats_label.heading("# 3", text="Duration")
 stats_label.column("# 4", anchor=CENTER, width=100)
 stats_label.heading("# 4", text="Description")
-stats_daily = tk.Button(stats_console, text='Daily', width=12, font=bigfont, bg=bg, command=lambda:statsdaily(stats_label))
+stats_label.pack()
+stats_daily = tk.Button(stats_frame, text='Daily', width=12, font=bigfont, bg=bg, command=lambda:statsdaily(stats_label))
 stats_daily.pack(side="left", padx=2)
-stats_weekly = tk.Button(stats_console, text='Weekly', width=12, font=bigfont, bg=bg, command=lambda:statsweekly(stats_label))
+stats_weekly = tk.Button(stats_frame, text='Weekly', width=12, font=bigfont, bg=bg, command=lambda:statsweekly(stats_label))
 stats_weekly.pack(side="left", padx=2)
-stats_alltime = tk.Button(stats_console, text='All Time', width=12, font=bigfont, bg=bg, command=lambda:statsmonthly(stats_label))
+stats_alltime = tk.Button(stats_frame, text='Month', width=12, font=bigfont, bg=bg, command=lambda:statsmonthly(stats_label))
 stats_alltime.pack(side="left", padx=2)
 
 # Mainloop
