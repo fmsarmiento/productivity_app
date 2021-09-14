@@ -9,6 +9,7 @@ import re
 from datetime import timedelta
 from tkinter import ttk
 from playsound import playsound
+import os
 
 # Styling
 bg = "#E7D2CC" 
@@ -47,12 +48,18 @@ pomodoro_total = 0
 # gvars - all
 
 # Sound setting up, tts
-alldone_sound = "sounds/all_done.mp3" # https://freesound.org/people/javapimp/sounds/439094/
-done_sound = "sounds/done.wav" # https://freesound.org/people/nckn/sounds/256113/
-tada_sound = "sounds/tada.wav" # https://freesound.org/people/Reitanna/sounds/242671/
-quack_sound = "sounds/quack.wav" # https://freesound.org/people/Reitanna/sounds/242664/
-takeabreak_sound = "sounds/break_sound.mp3" # Made through gTTS
-letscontinue_sound = "sounds/breakover_sound.mp3" # Made through gTTS
+alldone_sound = "data/all_done.mp3" # https://freesound.org/people/javapimp/sounds/439094/
+done_sound = "data/done.wav" # https://freesound.org/people/nckn/sounds/256113/
+tada_sound = "data/tada.wav" # https://freesound.org/people/Reitanna/sounds/242671/
+quack_sound = "data/quack.wav" # https://freesound.org/people/Reitanna/sounds/242664/
+takeabreak_sound = "data/break_sound.mp3" # Made through gTTS
+letscontinue_sound = "data/breakover_sound.mp3" # Made through gTTS
+
+# Configuration of data file
+
+if not os.path.exists("data/prod.data"):
+    f = open("data/prod.data","w+")
+    f.close()
 # MAIN
 root = tk.Tk() # Holds the whole GUI structure
 root.title('Productivity App')
@@ -83,7 +90,7 @@ def statsdaily(label):
     monthday = []
     ctr = 0
     label.delete(*label.get_children())
-    with open("prod.data","r+") as f:
+    with open("data/prod.data","w+") as f:
         x = f.readlines()
     day_now = datetime.datetime.now().strftime("%B %d")
     re_month = r"([\w ,:]+)\,"
@@ -115,7 +122,7 @@ def statsweekly(label):
     monthday = []
     ctr = 0
     label.delete(*label.get_children())
-    with open("prod.data","r+") as f:
+    with open("data/prod.data","r+") as f:
         x = f.readlines()
     day_now = datetime.datetime.now()
     week = []
@@ -171,7 +178,7 @@ def statsmonthly(label):
     monthday = []
     ctr = 0
     label.delete(*label.get_children())
-    with open("prod.data","r+") as f:
+    with open("data/prod.data","r+") as f:
         x = f.readlines()
     month = datetime.datetime.now().strftime("%B")
     re_month = r"([\w ,:]+)\,"
@@ -219,7 +226,7 @@ def day_productivity():
     total_time = "00:00:00"
     pattern = r"([\d][\d]:[\d][\d]:[\d][\d])"
     current_dt = datetime.datetime.now().strftime("%B %d")
-    with open("prod.data","r+") as f:
+    with open("data/prod.data","r+") as f:
         x = f.readlines()
     for elt in x:
         if current_dt in elt:
@@ -229,10 +236,10 @@ def day_productivity():
             y = y + 1
     return "Today, you had {} sessions, totaling to a productive time of {}!".format(y,total_time)
 
-# configure prod.data to fit our needs
+# configure data/prod.data to fit our needs
 def data_configure():
     fixed_data = ""
-    with open("prod.data","r+") as f:
+    with open("data/prod.data","r+") as f:
         x = f.readlines()
     for line in x:
         newline = line[1:].replace("\n","")
@@ -246,9 +253,9 @@ def data_configure():
             day_start = int(mo_start[1][-2:])
             day_end = int(mo_end[1][-2:])
             if day_start+1 != day_end:
-                print("Discrepancy is too big (more than 1 day). Requesting for manual change. See prod.data for more information.")
+                print("Discrepancy is too big (more than 1 day). Requesting for manual change. See data/prod.data for more information.")
                 print("Data: ",line)
-                messagebox.showinfo("Error","Discrepancy on prod.data is too big (more than 1 day). Requesting for manual change. See prod.data for more information. Update aborted.")
+                messagebox.showinfo("Error","Discrepancy on data/prod.data is too big (more than 1 day). Requesting for manual change. See data/prod.data for more information. Update aborted.")
                 return
             print("Found a discrepancy on line: Different start and end dates",line)
             start_time = line_elts[0].strip(mo_start[1])
@@ -282,7 +289,7 @@ def data_configure():
                 print(edit_entry1)
         else:
             fixed_data = fixed_data + line
-    with open("prod.data","w+") as f2:
+    with open("data/prod.data","w+") as f2:
         f2.write(fixed_data)
 
 # ssframe - shows and saves variables of inputs, if any
@@ -449,7 +456,7 @@ def paced_stop(frame,label):
     if datetime.datetime.now().strftime("%B %d") not in paced_startdt:
         pass
     data = '"{}","{}","Paced","{}","{}"\n'.format(paced_startdt,paced_enddt,hms(paced_timer),paced_desc)
-    with open("prod.data","a+") as f:
+    with open("data/prod.data","a+") as f:
         f.write(data)
     frame.tkraise()
     label['text'] = "You were productive for " + hms(paced_timer)+ "!\nWould you like to start again?"
@@ -514,7 +521,7 @@ def timed_stop(frame, label):
     timed_paused = True
     data = '"{}","{}","Timed","{}","{}"\n'.format(timed_startdt,timed_enddt,hms(timed_elapsed),timed_desc)
     # Add fnx here to add 2 diff data if it finished on different days
-    with open("prod.data","a+") as f:
+    with open("data/prod.data","a+") as f:
         f.write(data)
     frame.tkraise()
     label['text'] = "You were productive for " + hms(timed_elapsed)+ "!\nWould you like to start again?"
@@ -601,7 +608,7 @@ def pomodoro_stop(frame, label):
     pomodoro_paused = True
     data = '"{}","{}","Pomodoro","{}","{}"\n'.format(pomodoro_startdt,pomodoro_enddt,hms(pomodoro_total),pomodoro_desc)
     # Add fnx here to add 2 diff data if it finished on different days
-    with open("prod.data","a+") as f:
+    with open("data/prod.data","a+") as f:
         f.write(data)
     frame.tkraise()
     label['text'] = "You were productive for " + hms(pomodoro_total)+ "!\nWould you like to start again?"
