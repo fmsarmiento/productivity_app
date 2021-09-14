@@ -57,7 +57,7 @@ letscontinue_sound = "data/breakover_sound.mp3" # Made through gTTS
 
 # Configuration of data file
 
-if not os.path.exists("data/prod.data"):
+if os.path.exists("data/prod.data") == False:
     f = open("data/prod.data","w+")
     f.close()
 # MAIN
@@ -90,7 +90,7 @@ def statsdaily(label):
     monthday = []
     ctr = 0
     label.delete(*label.get_children())
-    with open("data/prod.data","w+") as f:
+    with open("data/prod.data","r+") as f:
         x = f.readlines()
     day_now = datetime.datetime.now().strftime("%B %d")
     re_month = r"([\w ,:]+)\,"
@@ -456,6 +456,7 @@ def paced_stop(frame,label):
     if datetime.datetime.now().strftime("%B %d") not in paced_startdt:
         pass
     data = '"{}","{}","Paced","{}","{}"\n'.format(paced_startdt,paced_enddt,hms(paced_timer),paced_desc)
+    print(data)
     with open("data/prod.data","a+") as f:
         f.write(data)
     frame.tkraise()
