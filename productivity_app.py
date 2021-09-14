@@ -8,6 +8,7 @@ import time
 import re
 from datetime import timedelta
 from tkinter import ttk
+from playsound import playsound
 
 # Styling
 bg = "#E7D2CC" 
@@ -45,12 +46,18 @@ pomodoro_state = 0
 pomodoro_total = 0
 # gvars - all
 
+# Sound setting up, tts
+alldone_sound = "sounds/all_done.mp3" # https://freesound.org/people/javapimp/sounds/439094/
+done_sound = "sounds/done.wav" # https://freesound.org/people/nckn/sounds/256113/
+tada_sound = "sounds/tada.wav" # https://freesound.org/people/Reitanna/sounds/242671/
+quack_sound = "sounds/quack.wav" # https://freesound.org/people/Reitanna/sounds/242664/
+takeabreak_sound = "sounds/break_sound.mp3" # Made through gTTS
+letscontinue_sound = "sounds/breakover_sound.mp3" # Made through gTTS
 # MAIN
 root = tk.Tk() # Holds the whole GUI structure
 root.title('Productivity App')
 root.rowconfigure(0, weight=1)
 root.columnconfigure(0, weight=1)
-
 # converts seconds to HMS
 def hms(duration):
     H = int(duration // 3600)
@@ -151,10 +158,11 @@ def statsweekly(label):
     total_dur = 0
     for dur in month_time.values():
         total_dur = total_dur + dur
-    daily_ave = total_dur/len(month_time)
+    daily_ave = total_dur/len(month_time) # Concern - change len(month_time) to 7 to accomodate days of the week without productivites
+    weekly_ave = total_dur/7
     max_key = max(month_time, key=month_time.get)
     min_key = min(month_time, key=month_time.get)
-    stats_text['text'] = "Average session is {}|Longest session is {}\nShortest session is {}\nDaily Average is {} and total is {}\nLongest daily time is {} on {}\nShortest daily time is {} on {}".format(average, max_val, min_val, hms(daily_ave),hms(total_dur),hms(month_time[max_key]),max_key,hms(month_time[min_key]),min_key)
+    stats_text['text'] = "Longest session is {}, Shortest session is {}\nLongest daily time is {} on {}\nShortest daily time is {} on {}\nProductive Average is {}, Weekly Average is {}\n Total productivity time is {}".format(max_val, min_val, hms(month_time[max_key]),max_key,hms(month_time[min_key]),min_key, hms(daily_ave),hms(weekly_ave),hms(total_dur))
 
 # monthly stats
 def statsmonthly(label):
@@ -197,10 +205,11 @@ def statsmonthly(label):
     total_dur = 0
     for dur in month_time.values():
         total_dur = total_dur + dur
-    daily_ave = total_dur/len(month_time)
+    daily_ave = total_dur/len(month_time) # Concern - change len(month_time) to day of the month to accomodate days without productivites
+    monthly_ave = total_dur/int(datetime.datetime.now().strftime("%d"))
     max_key = max(month_time, key=month_time.get)
     min_key = min(month_time, key=month_time.get)
-    stats_text['text'] = "Average session is {}|Longest session is {}\nShortest session is {}\nDaily Average is {} and total is {}\nLongest daily time is {} on {}\nShortest daily time is {} on {}".format(average, max_val, min_val, hms(daily_ave),hms(total_dur),hms(month_time[max_key]),max_key,hms(month_time[min_key]),min_key)
+    stats_text['text'] = "Longest session is {}, Shortest session is {}\nLongest daily time is {} on {}\nShortest daily time is {} on {}\nProductive Average is {}, Weekly Average is {}\n Total productivity time is {}".format(max_val, min_val, hms(month_time[max_key]),max_key,hms(month_time[min_key]),min_key, hms(daily_ave),hms(monthly_ave),hms(total_dur))
 
 # Return productivity amount for the day
 def day_productivity():
@@ -305,6 +314,8 @@ def ssframe(frame, savevars):
     global pomodoro_total
     if savevars == None: # For updates that don't have input elements
         pass
+    elif savevars == "stats":
+        stats_label.delete(*stats_label.get_children())
     elif savevars == "paced":
         paced_timer = 0
         paced_paused = False
@@ -462,7 +473,11 @@ def timedcounter(time_display):
         time.sleep(1)
         time_display['text'] = hms(timed_dur-timed_elapsed)
         timed_elapsed += 1
-    # ALERT HERE
+    i = 0
+    while i != 4:
+        playsound(done_sound)
+        i += 1
+    playsound(alldone_sound)
     timed_stop(mainframe,mainconsole_text)
 
 # timed_start - for resuming/starting timed_timer
@@ -525,10 +540,12 @@ def pomodorocounter(time_display):
                 pomodorolobby_stop['state']="normal"
                 return
             time.sleep(1)
-            time_display['text'] = hms(pomodoro_dur-pomodoro_elapsed)
+            time_display['text'] = "Time to work!\n"+str(hms(pomodoro_dur-pomodoro_elapsed))
             pomodoro_elapsed += 1
             pomodoro_total += 1
-        # Alert here
+        i = 0
+        playsound(tada_sound)
+        playsound(takeabreak_sound)
         pomodoro_state = 1
         pomodoro_elapsed = 0
         pomodorocounter(time_display)
@@ -540,9 +557,10 @@ def pomodorocounter(time_display):
                 pomodorolobby_stop['state']="normal"
                 return
             time.sleep(1)
-            time_display['text'] = hms(pomodoro_break-pomodorobreak_elapsed)
+            time_display['text'] = "Take a break!\n"+str(hms(pomodoro_break-pomodorobreak_elapsed))
             pomodorobreak_elapsed += 1
-        # Alert here
+        playsound(quack_sound)
+        playsound(letscontinue_sound)
         pomodoro_state = 0
         pomodorobreak_elapsed = 0
         pomodorocounter(time_display)
@@ -753,8 +771,6 @@ stats_text = tk.Label(stats_console, text="Here's the fruit of your productivity
 stats_text.pack(anchor="n", pady=2)
 stats_frame = tk.Frame(stats, bg=fg)
 stats_frame.place(relwidth=0.95, relheight=0.63, relx=0.025, rely=0.35)
-#stats_label = tk.Label(stats_frame, text="test", font=font, bg=fg)
-#stats_label.pack(anchor="w", pady=2)
 stats_label = ttk.Treeview(stats_frame, column=("Date", "Type", "Duration", "Description"), show='headings', height=6)
 stats_label.column("# 1", anchor=CENTER, width=90)
 stats_label.heading("# 1", text="Date")
@@ -765,12 +781,14 @@ stats_label.heading("# 3", text="Duration")
 stats_label.column("# 4", anchor=CENTER, width=100)
 stats_label.heading("# 4", text="Description")
 stats_label.pack()
-stats_daily = tk.Button(stats_frame, text='Daily', width=12, font=bigfont, bg=bg, command=lambda:statsdaily(stats_label))
+stats_daily = tk.Button(stats_frame, text='Daily', width=8, font=bigfont, bg=bg, command=lambda:statsdaily(stats_label))
 stats_daily.pack(side="left", padx=2)
-stats_weekly = tk.Button(stats_frame, text='Weekly', width=12, font=bigfont, bg=bg, command=lambda:statsweekly(stats_label))
+stats_weekly = tk.Button(stats_frame, text='Weekly', width=8, font=bigfont, bg=bg, command=lambda:statsweekly(stats_label))
 stats_weekly.pack(side="left", padx=2)
-stats_alltime = tk.Button(stats_frame, text='Month', width=12, font=bigfont, bg=bg, command=lambda:statsmonthly(stats_label))
+stats_alltime = tk.Button(stats_frame, text='Month', width=8, font=bigfont, bg=bg, command=lambda:statsmonthly(stats_label))
 stats_alltime.pack(side="left", padx=2)
+stats_back = tk.Button(stats_frame, text="Back to Main", width=11, font=bigfont, bg=bg, command=lambda:ssframe(mainframe, "stats"))
+stats_back.pack(side="left", padx=2)
 
 # Mainloop
 data_configure()
