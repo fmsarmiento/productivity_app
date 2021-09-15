@@ -276,15 +276,15 @@ def data_configure():
                 dur1 = "{:02d}:{:02d}:{:02d}".format(int(temp[0]),int(temp[1]),int(temp[2]))
                 temp = str(dur2).split(":")
                 dur2 = "{:02d}:{:02d}:{:02d}".format(int(temp[0]),int(temp[1]),int(temp[2]))
-                edit_entry1 = '"{}","{}","{}","{}","{}"'.format(line_elts[0],new_enddt,line_elts[2],dur1,line_elts[4])
+                edit_entry1 = '"{}","{}","{}","{}","{}"\n'.format(line_elts[0],new_enddt,line_elts[2],dur1,line_elts[4])
                 print(edit_entry1)
-                edit_entry2 = '"{}","{}","{}","{}","{}"'.format(mo_end[1]+", 12:00 AM",line_elts[1],line_elts[2],dur2,line_elts[4])
+                edit_entry2 = '"{}","{}","{}","{}","{}"\n'.format(mo_end[1]+", 12:00 AM",line_elts[1],line_elts[2],dur2,line_elts[4])
                 print(edit_entry2)
                 fixed_data = fixed_data + edit_entry1 + "\n"+ edit_entry2
             else:
                 print("Renaming data into 1 day.")
                 new_enddt = mo_start[1]+", 11:59 PM"
-                edit_entry1 = '"{}","{}","{}","{}","{}"'.format(line_elts[0],new_enddt,line_elts[2],line_elts[3],line_elts[4])
+                edit_entry1 = '"{}","{}","{}","{}","{}"\n'.format(line_elts[0],new_enddt,line_elts[2],line_elts[3],line_elts[4])
                 fixed_data = fixed_data + edit_entry1
                 print(edit_entry1)
         else:
@@ -450,7 +450,8 @@ def paced_stop(frame,label):
     global paced_timer
     global paced_desc
     global paced_paused
-    paced_enddt = get_datetime()
+    data_configure()
+    paced_enddt = get_datetime()    
     paced_paused = True
     # Add fnx here to add 2 diff data if it finished on different days
     if datetime.datetime.now().strftime("%B %d") not in paced_startdt:
@@ -518,6 +519,7 @@ def timed_stop(frame, label):
     global timed_elapsed
     global timed_desc
     global timed_paused
+    data_configure()
     timed_enddt = get_datetime()
     timed_paused = True
     data = '"{}","{}","Timed","{}","{}"\n'.format(timed_startdt,timed_enddt,hms(timed_elapsed),timed_desc)
@@ -605,6 +607,7 @@ def pomodoro_stop(frame, label):
     global pomodoro_desc
     global pomodoro_paused
     global pomodoro_total
+    data_configure()
     pomodoro_enddt = get_datetime()
     pomodoro_paused = True
     data = '"{}","{}","Pomodoro","{}","{}"\n'.format(pomodoro_startdt,pomodoro_enddt,hms(pomodoro_total),pomodoro_desc)
