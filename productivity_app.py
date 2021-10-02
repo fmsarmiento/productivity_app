@@ -216,7 +216,7 @@ def statsmonthly(label):
     monthly_ave = total_dur/int(datetime.datetime.now().strftime("%d"))
     max_key = max(month_time, key=month_time.get)
     min_key = min(month_time, key=month_time.get)
-    stats_text['text'] = "Longest session is {}, Shortest session is {}\nLongest daily time is {} on {}\nShortest daily time is {} on {}\nProductive Average is {}, Weekly Average is {}\n Total productivity time is {}".format(max_val, min_val, hms(month_time[max_key]),max_key,hms(month_time[min_key]),min_key, hms(daily_ave),hms(monthly_ave),hms(total_dur))
+    stats_text['text'] = "Longest session is {}, Shortest session is {}\nLongest daily time is {} on {}\nShortest daily time is {} on {}\nProductive Average is {}, Monthly Average is {}\n Total productivity time is {}".format(max_val, min_val, hms(month_time[max_key]),max_key,hms(month_time[min_key]),min_key, hms(daily_ave),hms(monthly_ave),hms(total_dur))
 
 # Return productivity amount for the day
 def day_productivity():
