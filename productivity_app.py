@@ -8,7 +8,7 @@ import time
 import re
 from datetime import timedelta
 from tkinter import ttk
-from playsound import playsound
+import winsound
 import os
 
 # Styling
@@ -280,7 +280,7 @@ def data_configure():
                 print(edit_entry1)
                 edit_entry2 = '"{}","{}","{}","{}","{}"\n'.format(mo_end[1]+", 12:00 AM",line_elts[1],line_elts[2],dur2,line_elts[4])
                 print(edit_entry2)
-                fixed_data = fixed_data + edit_entry1 + "\n"+ edit_entry2
+                fixed_data = fixed_data + edit_entry1 + edit_entry2
             else:
                 print("Renaming data into 1 day.")
                 new_enddt = mo_start[1]+", 11:59 PM"
@@ -484,9 +484,9 @@ def timedcounter(time_display):
         timed_elapsed += 1
     i = 0
     while i != 4:
-        playsound(done_sound)
+        winsound.PlaySound(done_sound,0)
         i += 1
-    playsound(alldone_sound)
+    winsound.PlaySound(alldone_sound,0)
     timed_stop(mainframe,mainconsole_text)
 
 # timed_start - for resuming/starting timed_timer
@@ -554,8 +554,8 @@ def pomodorocounter(time_display):
             pomodoro_elapsed += 1
             pomodoro_total += 1
         i = 0
-        playsound(tada_sound)
-        playsound(takeabreak_sound)
+        winsound.PlaySound(tada_sound,0)
+        winsound.PlaySound(takeabreak_sound,0)
         pomodoro_state = 1
         pomodoro_elapsed = 0
         pomodorocounter(time_display)
@@ -569,8 +569,8 @@ def pomodorocounter(time_display):
             time.sleep(1)
             time_display['text'] = "Take a break!\n"+str(hms(pomodoro_break-pomodorobreak_elapsed))
             pomodorobreak_elapsed += 1
-        playsound(quack_sound)
-        playsound(letscontinue_sound)
+        winsound.PlaySound(quack_sound,0)
+        winsound.PlaySound(letscontinue_sound,0)
         pomodoro_state = 0
         pomodorobreak_elapsed = 0
         pomodorocounter(time_display)
